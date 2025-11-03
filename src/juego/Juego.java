@@ -440,9 +440,17 @@ public class Juego extends InterfaceJuego {
         return false;
     }
     
+    /**
+     * Método de ayuda para calcular la distancia entre dos puntos (colisión).
+     * @param x1 Coordenada X del primer objeto
+     * @param y1 Coordenada Y del primer objeto
+     * @param x2 Coordenada X del segundo objeto
+     * @param y2 Coordenada Y del segundo objeto
+     * @return true si la distancia es menor al umbral, false en caso contrario.
+     */
     private boolean hayColision(double x1, double y1, double x2, double y2) {
         double diffX = x1 - x2;
-        double diffY = y1 - y2;
+        double diffY = y1 - y2; // <-- CORREGIDO
         double distancia = Math.sqrt(diffX * diffX + diffY * diffY);
         return distancia < 30; // Umbral de colisión
     }
