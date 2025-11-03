@@ -23,6 +23,7 @@ public class Juego extends InterfaceJuego {
     
     // --- ESTADOS ---
     private RoseBlade plantaParaPlantar; // NUEVO
+    private RoseBlade plantaSeleccionada; // NUEVO
     private int proximoTickParaPlantar; // NUEVO
     private boolean juegoTerminado; // NUEVO
     private int tiempoFinal; // NUEVO
@@ -84,18 +85,20 @@ public class Juego extends InterfaceJuego {
         this.dibujarTablero();
         this.dibujarCartas(); // NUEVO
         this.dibujarObjetos(this.regalos);
-        this.dibujarObjetos(this.rosas); // NUEVO
+        this.dibujarObjetos(this.rosas); // (Ahora usará 'plantaSeleccionada')
         this.dibujarZombies(); // NUEVO
         this.dibujarDisparos(); // NUEVO
+        // (La UI de Texto se añade en el próximo commit)
         
         // --- LÓGICA ---
         if (!this.juegoTerminado) { // NUEVO
+        	this.actualizarPlantas(); // NUEVO
             this.actualizarZombies(); // NUEVO
             this.actualizarDisparos(); // NUEVO
-            this.ejecutarLogicaJuego(); // NUEVO
-            this.manejarEstadoJugador();
+            this.ejecutarLogicaJuego(); // (Ahora revisará 'plantaSeleccionada' para disparar)
+            this.manejarEstadoJugador(); // (Ahora incluirá lógica WASD)
         } else {
-            // (Se añadirá en el próximo commit)
+        	// (Lógica de fin de juego)
         }
     }
     
@@ -132,27 +135,40 @@ public class Juego extends InterfaceJuego {
         }
     }
     
-// --- NUEVOS MÉTODOS ---
+    // --- NUEVOS MÉTODOS ---
     
-    private void dibujarObjetos(RoseBlade[] arrayDeRosas) {
+    private void dibujarObjetos(RoseBlade[] arrayDeRosas) { // MODIFICADO
         for (int i = 0; i < arrayDeRosas.length; i++) {
             if (arrayDeRosas[i] != null) {
-                arrayDeRosas[i].dibujarse(this.entorno, false);
+                // (Pasa el estado de selección a la planta)
+                boolean esLaSeleccionada = (arrayDeRosas[i] == this.plantaSeleccionada);
+                arrayDeRosas[i].dibujarse(this.entorno, esLaSeleccionada);
             }
         }
     }
     
-    private void manejarEstadoJugador() {
+    private void manejarEstadoJugador() { // MODIFICADO
         if (this.plantaParaPlantar != null) {
             manejarEstadoSosteniendoPlanta();
         } else {
             manejarClicsModoJugando();
         }
+        // (Añade la llamada a la lógica de movimiento)
+        if (this.plantaSeleccionada != null) {
+            manejarMovimientoPlanta();
+        }
     }
     
-    private void manejarClicsModoJugando() {
+    private void manejarClicsModoJugando() { // MODIFICADO
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
-            intentarAgarrarCarta();
+            // (Añade la lógica de prioridad de deselección)
+            if (this.plantaSeleccionada != null) {
+                manejarDeseleccion();
+            } else {
+                if (!intentarAgarrarCarta()) {
+                    intentarSeleccionarPlanta();
+                }
+            }
         }
     }
 
@@ -169,7 +185,23 @@ public class Juego extends InterfaceJuego {
         }
         return false;
     }
-
+    
+    private void intentarSeleccionarPlanta() { // NUEVO MÉTODO
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] != null && hayColision(this.rosas[i].getX(), this.rosas[i].getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
+                this.plantaSeleccionada = this.rosas[i];
+                break; 
+            }
+        }
+    }
+    
+    private void manejarDeseleccion() { // NUEVO MÉTODO
+        if (hayColision(this.plantaSeleccionada.getX(), this.plantaSeleccionada.getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
+            this.plantaSeleccionada = null;
+        } else {
+            this.plantaSeleccionada = null;
+        }
+    }
     private void manejarEstadoSosteniendoPlanta() {
         this.plantaParaPlantar.snapAPosicion(this.entorno.mouseX(), this.entorno.mouseY());
         this.plantaParaPlantar.dibujarse(this.entorno, false);
@@ -226,14 +258,21 @@ public class Juego extends InterfaceJuego {
         }
     }
     
-    private void ejecutarLogicaJuego() {
-        if (this.entorno.numeroDeTick() % 100 == 0) { 
-            spawnZombie();
+    private void actualizarPlantas() { // NUEVO MÉTODO
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] != null) {
+                this.rosas[i].actualizarMovimiento();
+            }
         }
+    }
+    
+    private void ejecutarLogicaJuego() { // MODIFICADO
+        if (this.entorno.numeroDeTick() % 100 == 0) { spawnZombie(); }
         
+        // (Añade la comprobación de 'plantaSeleccionada')
         if (this.entorno.numeroDeTick() % 150 == 0) {
             for (int i = 0; i < this.rosas.length; i++) {
-                if (this.rosas[i] != null) {
+                if (this.rosas[i] != null && this.rosas[i] != this.plantaSeleccionada) {
                     this.rosas[i].disparar();
                 }
             }
@@ -288,18 +327,63 @@ public class Juego extends InterfaceJuego {
         }
     }
     
-    private void chequearColisionesPlantas() {
+    private void chequearColisionesPlantas() { // MODIFICADO
         for (int z = 0; z < this.zombies.length; z++) {
             for (int i = 0; i < this.rosas.length; i++) {
                 if (this.zombies[z] != null && this.rosas[i] != null) {
                     if (hayColision(this.zombies[z].getX(), this.zombies[z].getY(), this.rosas[i].getX(), this.rosas[i].getY())) {
+                        RoseBlade plantaComida = this.rosas[i];
                         this.rosas[i] = null;
+                        // (Comprueba si la planta comida era la seleccionada)
+                        if (this.plantaSeleccionada == plantaComida) {
+                            this.plantaSeleccionada = null;
+                        }
                     }
                 }
             }
         }
     }
     
+    private void manejarMovimientoPlanta() { // NUEVO MÉTODO
+        if (!this.plantaSeleccionada.estaMoviendose()) {
+            double saltoHorizontal = this.tablero[0].getAncho(); 
+            double saltoVertical = this.tablero[0].getAlto(); 
+
+            if (this.entorno.sePresiono('w') || this.entorno.sePresiono(this.entorno.TECLA_ARRIBA)) {
+                double nuevaY = this.plantaSeleccionada.getY() - saltoVertical;
+                double limiteSuperior = this.tablero[0].getCentroY();
+                if (nuevaY >= limiteSuperior && !estaCasillaOcupada(this.plantaSeleccionada.getX(), nuevaY)) {
+                    this.plantaSeleccionada.setTarget(this.plantaSeleccionada.getX(), nuevaY);
+                }
+            }
+            if (this.entorno.sePresiono('s') || this.entorno.sePresiono(this.entorno.TECLA_ABAJO)) {
+                double nuevaY = this.plantaSeleccionada.getY() + saltoVertical;
+                int indiceLimite = ((FILAS - 1) * COLUMNAS);
+                double limiteInferior = this.tablero[indiceLimite].getCentroY();
+                if (nuevaY <= limiteInferior && !estaCasillaOcupada(this.plantaSeleccionada.getX(), nuevaY)) {
+                    this.plantaSeleccionada.setTarget(this.plantaSeleccionada.getX(), nuevaY);
+                }
+            }
+            if (this.entorno.sePresiono('a') || this.entorno.sePresiono(this.entorno.TECLA_IZQUIERDA)) {
+                double nuevaX = this.plantaSeleccionada.getX() - saltoHorizontal;
+                int indiceLimite = (0 * COLUMNAS) + 1;
+                double limiteIzquierdo = this.tablero[indiceLimite].getCentroX();
+                if (nuevaX >= limiteIzquierdo && !estaCasillaOcupada(nuevaX, this.plantaSeleccionada.getY())) {
+                    this.plantaSeleccionada.setTarget(nuevaX, this.plantaSeleccionada.getY());
+                }
+            }
+            if (this.entorno.sePresiono('d') || this.entorno.sePresiono(this.entorno.TECLA_DERECHA)) {
+                double nuevaX = this.plantaSeleccionada.getX() + saltoHorizontal;
+                int indiceLimite = (0 * COLUMNAS) + (COLUMNAS - 1);
+                double limiteDerecho = this.tablero[indiceLimite].getCentroX();
+                if (nuevaX <= limiteDerecho && !estaCasillaOcupada(nuevaX, this.plantaSeleccionada.getY())) {
+                    this.plantaSeleccionada.setTarget(nuevaX, this.plantaSeleccionada.getY());
+                }
+            }
+        }
+    }
+    
+    // --- MÉTODOS DE UTILIDAD ---
     private boolean hayEspacioParaPlantar() {
         for (int i = 0; i < this.rosas.length; i++) {
             if (this.rosas[i] == null) { return true; }
@@ -307,9 +391,10 @@ public class Juego extends InterfaceJuego {
         return false;
     }
 
-    private boolean estaCasillaOcupada(double x, double y) {
+    private boolean estaCasillaOcupada(double x, double y) { // MODIFICADO
         for (int i = 0; i < this.rosas.length; i++) {
-            if (this.rosas[i] != null) {
+            // (Añade la comprobación de 'plantaSeleccionada')
+            if (this.rosas[i] != null && this.rosas[i] != this.plantaSeleccionada) {
                 if (Math.abs(this.rosas[i].getX() - x) < 1 && Math.abs(this.rosas[i].getY() - y) < 1) {
                     return true;
                 }
