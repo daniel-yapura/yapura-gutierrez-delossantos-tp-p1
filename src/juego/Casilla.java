@@ -2,7 +2,7 @@ package juego;
 import java.awt.Color;
 import entorno.Entorno;
 
-public class Casilla extends Juego {
+public class Casilla {
 	private final double centroX, centroY, ancho, alto;
     private final boolean esPlantable;
     private final Color color;
