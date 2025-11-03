@@ -17,10 +17,15 @@ public class Juego extends InterfaceJuego {
     private Regalo[] regalos;
     private CartaPlanta[] cartas; // NUEVO
     private RoseBlade[] rosas; // NUEVO
+    private ZombieGrinch[] zombies; // NUEVO
+    private int cant_zombies; // NUEVO
+    private int cont_zombies; // NUEVO
     
     // --- ESTADOS ---
     private RoseBlade plantaParaPlantar; // NUEVO
     private int proximoTickParaPlantar; // NUEVO
+    private boolean juegoTerminado; // NUEVO
+    private int tiempoFinal; // NUEVO
 
     Juego() {
         this.entorno = new Entorno(this, "La invasión de los Zombies Grinch", 810, 600);
@@ -29,6 +34,7 @@ public class Juego extends InterfaceJuego {
         this.regalos = new Regalo[FILAS];
         this.cartas = new CartaPlanta[3]; // NUEVO
         this.rosas = new RoseBlade[10]; // NUEVO (límite de 10)
+        this.zombies = new ZombieGrinch[10]; // NUEVO
         
         // --- NUEVO: CREAR CARTAS ---
         this.cartas[0] = new CartaPlanta(20, 20, 90, 70, 0); // 0 = RoseBlade
@@ -64,6 +70,10 @@ public class Juego extends InterfaceJuego {
         // --- NUEVO: INICIALIZAR ESTADOS ---
         this.proximoTickParaPlantar = 0;
         this.plantaParaPlantar = null; // NUEVO
+        this.cont_zombies = 0; // NUEVO
+        this.cant_zombies = 50; // NUEVO
+        this.juegoTerminado = false; // NUEVO
+        this.tiempoFinal = 0; // NUEVO
 
         this.entorno.iniciar();
     }
@@ -75,9 +85,18 @@ public class Juego extends InterfaceJuego {
         this.dibujarCartas(); // NUEVO
         this.dibujarObjetos(this.regalos);
         this.dibujarObjetos(this.rosas); // NUEVO
+        this.dibujarZombies(); // NUEVO
+        this.dibujarDisparos(); // NUEVO
         
         // --- LÓGICA ---
-        this.manejarEstadoJugador(); // NUEVO
+        if (!this.juegoTerminado) { // NUEVO
+            this.actualizarZombies(); // NUEVO
+            this.actualizarDisparos(); // NUEVO
+            this.ejecutarLogicaJuego(); // NUEVO
+            this.manejarEstadoJugador();
+        } else {
+            // (Se añadirá en el próximo commit)
+        }
     }
     
     private void dibujarTablero() {
@@ -176,6 +195,111 @@ public class Juego extends InterfaceJuego {
         }
     }
     
+    private void dibujarZombies() {
+        for (int z = 0; z < this.zombies.length; z++) {
+            if (this.zombies[z] != null) { this.zombies[z].dibujarse(this.entorno); }
+        }
+    }
+    
+    private void dibujarDisparos() {
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] != null && this.rosas[i].getBola() != null) {
+                this.rosas[i].getBola().dibujarse(this.entorno);
+            }
+        }
+    }
+
+    private void actualizarZombies() {
+        for (int z = 0; z < this.zombies.length; z++) {
+            if (this.zombies[z] != null) { this.zombies[z].moverse(); }
+        }
+    }
+
+    private void actualizarDisparos() {
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] != null && this.rosas[i].getBola() != null) {
+                this.rosas[i].getBola().moverse();
+                if (this.rosas[i].getBola().getX() > this.entorno.ancho()) {
+                    this.rosas[i].setBola(null);
+                }
+            }
+        }
+    }
+    
+    private void ejecutarLogicaJuego() {
+        if (this.entorno.numeroDeTick() % 100 == 0) { 
+            spawnZombie();
+        }
+        
+        if (this.entorno.numeroDeTick() % 150 == 0) {
+            for (int i = 0; i < this.rosas.length; i++) {
+                if (this.rosas[i] != null) {
+                    this.rosas[i].disparar();
+                }
+            }
+        }
+        chequearColisionesDisparos();
+        chequearCondicionDerrota();
+        chequearColisionesPlantas();
+    }
+
+    private void spawnZombie() {
+        for (int z = 0; z < this.zombies.length; z++) { 
+            if (this.zombies[z] == null) { 
+                int f = (int)(Math.random() * FILAS);
+                int c = COLUMNAS - 1;
+                int indiceCasilla = (f * COLUMNAS) + c;
+                this.zombies[z] = new ZombieGrinch(this.entorno.ancho() + 50, this.tablero[indiceCasilla].getCentroY());
+                break;
+            } 
+        } 
+    }
+
+    private void chequearColisionesDisparos() {
+        for (int i = 0; i < this.rosas.length; i++) {
+            for (int z = 0; z < this.zombies.length; z++) {
+                if (this.rosas[i] != null && this.rosas[i].getBola() != null && this.zombies[z] != null) {
+                    if (hayColision(this.rosas[i].getBola().getX(), this.rosas[i].getBola().getY(), this.zombies[z].getX(), this.zombies[z].getY())) {
+                        this.rosas[i].setBola(null);
+                        this.zombies[z].recibirDisparo();
+                        if (this.zombies[z].getVida() == 0) {
+                            this.zombies[z] = null;
+                            this.cont_zombies++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void chequearCondicionDerrota() {
+        for (int z = 0; z < this.zombies.length; z++) {
+            for (int i = 0; i < this.regalos.length; i++) {
+                if (this.zombies[z] != null && this.regalos[i] != null) {
+                    if (hayColision(this.zombies[z].getX(), this.zombies[z].getY(), this.regalos[i].getX(), this.regalos[i].getY())) {
+                        if (!this.juegoTerminado) {
+                            System.out.println("¡Juego Terminado!");
+                            this.juegoTerminado = true;
+                            this.tiempoFinal = this.entorno.numeroDeTick() / 60;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private void chequearColisionesPlantas() {
+        for (int z = 0; z < this.zombies.length; z++) {
+            for (int i = 0; i < this.rosas.length; i++) {
+                if (this.zombies[z] != null && this.rosas[i] != null) {
+                    if (hayColision(this.zombies[z].getX(), this.zombies[z].getY(), this.rosas[i].getX(), this.rosas[i].getY())) {
+                        this.rosas[i] = null;
+                    }
+                }
+            }
+        }
+    }
+    
     private boolean hayEspacioParaPlantar() {
         for (int i = 0; i < this.rosas.length; i++) {
             if (this.rosas[i] == null) { return true; }
@@ -192,6 +316,13 @@ public class Juego extends InterfaceJuego {
             }
         }
         return false;
+    }
+    
+    private boolean hayColision(double x1, double y1, double x2, double y2) {
+        double diffX = x1 - x2;
+        double diffY = y1 - y2;
+        double distancia = Math.sqrt(diffX * diffX + diffY * diffY);
+        return distancia < 30; // Umbral de colisión
     }
 
     @SuppressWarnings("unused")
