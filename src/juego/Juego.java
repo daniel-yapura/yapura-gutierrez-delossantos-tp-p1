@@ -1,48 +1,86 @@
 package juego;
 
-
-import java.awt.Color;
-
 import entorno.Entorno;
 import entorno.InterfaceJuego;
+import java.awt.Color;
 
-public class Juego extends InterfaceJuego
-{
-	// El objeto Entorno que controla el tiempo y otros
-	private Entorno entorno;
-	
-	// Variables y métodos propios de cada grupo
-	// ...
-	
-	Juego()
-	{
-		// Inicializa el objeto entorno
-		this.entorno = new Entorno(this, "Proyecto para TP", 800, 600);
-		
-		// Inicializar lo que haga falta para el juego
-		// ...
+public class Juego extends InterfaceJuego {
 
-		// Inicia el juego!
-		this.entorno.iniciar();
-	}
+    // --- CONSTANTES DEL JUEGO ---
+    private static final int FILAS = 5;
+    private static final int COLUMNAS = 9;
 
-	/**
-	 * Durante el juego, el método tick() será ejecutado en cada instante y 
-	 * por lo tanto es el método más importante de esta clase. Aquí se debe 
-	 * actualizar el estado interno del juego para simular el paso del tiempo 
-	 * (ver el enunciado del TP para mayor detalle).
-	 */
-	public void tick()
-	{
-		// Procesamiento de un instante de tiempo
-		// ...
-		
-	}
-	
+    // --- VARIABLES DE INSTANCIA ---
+    private Entorno entorno;
+    private Casilla[] tablero; // NUEVO
+    private Regalo[] regalos; // NUEVO
 
-	@SuppressWarnings("unused")
-	public static void main(String[] args)
-	{
-		Juego juego = new Juego();
-	}
+    Juego() {
+        this.entorno = new Entorno(this, "La invasión de los Zombies Grinch", 810, 600);
+        
+        // --- NUEVO: INICIALIZAR ARRAYS ---
+        this.tablero = new Casilla[FILAS * COLUMNAS];
+        this.regalos = new Regalo[FILAS];
+        
+        // --- NUEVO: CREAR TABLERO ---
+        int anchoCasilla = this.entorno.ancho() / COLUMNAS;
+        int altoCasilla = anchoCasilla;
+        int altoTotalTablero = FILAS * altoCasilla;
+        int inicioX = 0;
+        int inicioY = this.entorno.alto() - altoTotalTablero;
+        
+        for (int f = 0; f < FILAS; f++) {
+            for (int c = 0; c < COLUMNAS; c++) {
+                double x = inicioX + c * anchoCasilla + anchoCasilla / 2;
+                double y = inicioY + f * altoCasilla + altoCasilla / 2;
+                boolean plantable = (c >= 1);
+                
+                Color color;
+                if ((f % 2 == 0 && c % 2 == 0) || (f % 2 != 0 && c % 2 != 0)) {
+                    color = new Color(0, 102, 0);
+                } else {
+                    color = new Color(0, 50, 0);
+                }
+                
+                int indice = (f * COLUMNAS) + c;
+                this.tablero[indice] = new Casilla(x, y, anchoCasilla, altoCasilla, plantable, color);
+            }
+        }
+        
+        // --- NUEVO: CREAR REGALOS ---
+        for (int f = 0; f < FILAS; f++) {
+            int indiceRegalo = (f * COLUMNAS) + 0;
+            this.regalos[f] = new Regalo(this.tablero[indiceRegalo].getCentroX(), this.tablero[indiceRegalo].getCentroY());
+        }
+
+        this.entorno.iniciar();
+    }
+
+    @Override
+    public void tick() {
+        // --- NUEVO: DIBUJADO ---
+        this.dibujarTablero();
+        this.dibujarObjetos(this.regalos);
+    }
+    
+    // --- NUEVOS MÉTODOS ---
+    
+    private void dibujarTablero() {
+        for (int i = 0; i < this.tablero.length; i++) {
+            this.tablero[i].dibujarse(this.entorno);
+        }
+    }
+    
+    private void dibujarObjetos(Regalo[] arrayDeRegalos) {
+        for (int i = 0; i < arrayDeRegalos.length; i++) {
+            if (arrayDeRegalos[i] != null) {
+                arrayDeRegalos[i].dibujarse(this.entorno);
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static void main(String[] args) {
+        Juego juego = new Juego();
+    }
 }
