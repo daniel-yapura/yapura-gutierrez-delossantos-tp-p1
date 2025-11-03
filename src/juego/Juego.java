@@ -88,7 +88,7 @@ public class Juego extends InterfaceJuego {
         this.dibujarObjetos(this.rosas); // (Ahora usará 'plantaSeleccionada')
         this.dibujarZombies(); // NUEVO
         this.dibujarDisparos(); // NUEVO
-        // (La UI de Texto se añade en el próximo commit)
+        this.dibujarInformacionUI(); // MODIFICADO (ahora se llama siempre)
         
         // --- LÓGICA ---
         if (!this.juegoTerminado) { // NUEVO
@@ -98,7 +98,8 @@ public class Juego extends InterfaceJuego {
             this.ejecutarLogicaJuego(); // (Ahora revisará 'plantaSeleccionada' para disparar)
             this.manejarEstadoJugador(); // (Ahora incluirá lógica WASD)
         } else {
-        	// (Lógica de fin de juego)
+        	// --- JUEGO TERMINADO ---
+            this.dibujarMensajeFinDeJuego(); // NUEVO
         }
     }
     
@@ -134,8 +135,6 @@ public class Juego extends InterfaceJuego {
             }
         }
     }
-    
-    // --- NUEVOS MÉTODOS ---
     
     private void dibujarObjetos(RoseBlade[] arrayDeRosas) { // MODIFICADO
         for (int i = 0; i < arrayDeRosas.length; i++) {
@@ -258,6 +257,20 @@ public class Juego extends InterfaceJuego {
         }
     }
     
+    private void dibujarInformacionUI() { // NUEVO MÉTODO
+        this.entorno.cambiarFont("Arial", 18, Color.WHITE);
+        String textoEliminados = "Eliminados: " + this.cont_zombies + " / " + this.cant_zombies;
+        this.entorno.escribirTexto(textoEliminados, 600, 50);
+        
+        int tiempoAMostrar;
+        if (this.juegoTerminado) {
+            tiempoAMostrar = this.tiempoFinal;
+        } else {
+            tiempoAMostrar = this.entorno.numeroDeTick() / 60;
+        }
+        this.entorno.escribirTexto("Tiempo: " + tiempoAMostrar, 600, 80);
+    }
+    
     private void actualizarPlantas() { // NUEVO MÉTODO
         for (int i = 0; i < this.rosas.length; i++) {
             if (this.rosas[i] != null) {
@@ -279,6 +292,7 @@ public class Juego extends InterfaceJuego {
         }
         chequearColisionesDisparos();
         chequearCondicionDerrota();
+        chequearCondicionVictoria(); // NUEVO
         chequearColisionesPlantas();
     }
 
@@ -327,6 +341,16 @@ public class Juego extends InterfaceJuego {
         }
     }
     
+    private void chequearCondicionVictoria() { // NUEVO MÉTODO
+        if (this.cont_zombies >= this.cant_zombies) {
+            if (!this.juegoTerminado) {
+                System.out.println("¡FELICIDADES! Has ganado el juego.");
+                this.juegoTerminado = true;
+                this.tiempoFinal = this.entorno.numeroDeTick() / 60;
+            }
+        }
+    }
+    
     private void chequearColisionesPlantas() { // MODIFICADO
         for (int z = 0; z < this.zombies.length; z++) {
             for (int i = 0; i < this.rosas.length; i++) {
@@ -341,6 +365,19 @@ public class Juego extends InterfaceJuego {
                     }
                 }
             }
+        }
+    }
+    
+    private void dibujarMensajeFinDeJuego() { // NUEVO MÉTODO
+        int centroAncho = this.entorno.ancho() / 2;
+        int centroAlto = this.entorno.alto() / 2;
+        
+        if (this.cont_zombies >= this.cant_zombies) {
+            this.entorno.cambiarFont("Arial", 50, Color.YELLOW);
+            this.entorno.escribirTexto("¡Has Ganado!", centroAncho - 150, centroAlto);
+        } else {
+            this.entorno.cambiarFont("Arial", 50, Color.RED);
+            this.entorno.escribirTexto("¡Has Perdido!", centroAncho - 150, centroAlto);
         }
     }
     
