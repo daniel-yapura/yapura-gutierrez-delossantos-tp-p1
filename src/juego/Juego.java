@@ -16,8 +16,10 @@ public class Juego extends InterfaceJuego {
     private Casilla[] tablero;
     private Regalo[] regalos;
     private CartaPlanta[] cartas; // NUEVO
+    private RoseBlade[] rosas; // NUEVO
     
     // --- ESTADOS ---
+    private RoseBlade plantaParaPlantar; // NUEVO
     private int proximoTickParaPlantar; // NUEVO
 
     Juego() {
@@ -26,6 +28,7 @@ public class Juego extends InterfaceJuego {
         this.tablero = new Casilla[FILAS * COLUMNAS];
         this.regalos = new Regalo[FILAS];
         this.cartas = new CartaPlanta[3]; // NUEVO
+        this.rosas = new RoseBlade[10]; // NUEVO (límite de 10)
         
         // --- NUEVO: CREAR CARTAS ---
         this.cartas[0] = new CartaPlanta(20, 20, 90, 70, 0); // 0 = RoseBlade
@@ -60,15 +63,21 @@ public class Juego extends InterfaceJuego {
         
         // --- NUEVO: INICIALIZAR ESTADOS ---
         this.proximoTickParaPlantar = 0;
+        this.plantaParaPlantar = null; // NUEVO
 
         this.entorno.iniciar();
     }
 
     @Override
     public void tick() {
+    	// --- DIBUJADO ---
         this.dibujarTablero();
         this.dibujarCartas(); // NUEVO
         this.dibujarObjetos(this.regalos);
+        this.dibujarObjetos(this.rosas); // NUEVO
+        
+        // --- LÓGICA ---
+        this.manejarEstadoJugador(); // NUEVO
     }
     
     private void dibujarTablero() {
@@ -102,6 +111,87 @@ public class Juego extends InterfaceJuego {
                 arrayDeRegalos[i].dibujarse(this.entorno);
             }
         }
+    }
+    
+// --- NUEVOS MÉTODOS ---
+    
+    private void dibujarObjetos(RoseBlade[] arrayDeRosas) {
+        for (int i = 0; i < arrayDeRosas.length; i++) {
+            if (arrayDeRosas[i] != null) {
+                arrayDeRosas[i].dibujarse(this.entorno, false);
+            }
+        }
+    }
+    
+    private void manejarEstadoJugador() {
+        if (this.plantaParaPlantar != null) {
+            manejarEstadoSosteniendoPlanta();
+        } else {
+            manejarClicsModoJugando();
+        }
+    }
+    
+    private void manejarClicsModoJugando() {
+        if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
+            intentarAgarrarCarta();
+        }
+    }
+
+    private boolean intentarAgarrarCarta() {
+        for (int i = 0; i < this.cartas.length; i++) {
+            if (this.cartas[i] != null && this.cartas[i].fueClickeado(this.entorno.mouseX(), this.entorno.mouseY())) {
+                if (this.entorno.numeroDeTick() >= this.proximoTickParaPlantar) {
+                    if (this.hayEspacioParaPlantar()) {
+                        this.plantaParaPlantar = new RoseBlade(this.entorno.mouseX(), this.entorno.mouseY());
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void manejarEstadoSosteniendoPlanta() {
+        this.plantaParaPlantar.snapAPosicion(this.entorno.mouseX(), this.entorno.mouseY());
+        this.plantaParaPlantar.dibujarse(this.entorno, false);
+        
+        if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
+            for (int i = 0; i < this.tablero.length; i++) {
+                Casilla celdaClickeada = this.tablero[i];
+                if (celdaClickeada.fueClickeada(this.entorno.mouseX(), this.entorno.mouseY())) {
+                    if (celdaClickeada.esPlantable() && !estaCasillaOcupada(celdaClickeada.getCentroX(), celdaClickeada.getCentroY())) {
+                        for (int k = 0; k < this.rosas.length; k++) {
+                            if (this.rosas[k] == null) {
+                                this.rosas[k] = this.plantaParaPlantar;
+                                this.rosas[k].snapAPosicion(celdaClickeada.getCentroX(), celdaClickeada.getCentroY());
+                                this.plantaParaPlantar = null;
+                                this.proximoTickParaPlantar = this.entorno.numeroDeTick() + COOLDOWN_DURACION;
+                                break; 
+                            }
+                        }
+                    }
+                    break; 
+                }
+            }
+        }
+    }
+    
+    private boolean hayEspacioParaPlantar() {
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] == null) { return true; }
+        }
+        return false;
+    }
+
+    private boolean estaCasillaOcupada(double x, double y) {
+        for (int i = 0; i < this.rosas.length; i++) {
+            if (this.rosas[i] != null) {
+                if (Math.abs(this.rosas[i].getX() - x) < 1 && Math.abs(this.rosas[i].getY() - y) < 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @SuppressWarnings("unused")
