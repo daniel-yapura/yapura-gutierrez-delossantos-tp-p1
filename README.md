@@ -9,7 +9,6 @@
     * **Email:** ignaciodanielgutierrez@gmail.com
 * **Alumno 3:** Agustin Ezequiel De Los Santos
     * **Email:** delossantosagustinezequiel@gmail.com
-
 ---
 
 ## Introducción
