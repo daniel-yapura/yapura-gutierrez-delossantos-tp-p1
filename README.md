@@ -3,8 +3,6 @@
 # Trabajo Práctico: La invasión de los Zombies Grinch
 ## Programación I (COM-07-G4) - Turno mañana
 
-## Encabezado
-
 * **Alumno 1:** Daniel Alejandro Yapura
     * **Email:** ale18.yapura2003@gmail.com
 * **Alumno 2:** Ignacio Daniel Gutiérrez
