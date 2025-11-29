@@ -8,8 +8,12 @@ public class Casilla extends Juego {
     private final Color color;
 
     public Casilla(double x, double y, double ancho, double alto, boolean esPlantable, Color color) {
-        this.centroX = x; this.centroY = y; this.ancho = ancho;
-        this.alto = alto; this.esPlantable = esPlantable; this.color = color;
+        this.centroX = x; 
+        this.centroY = y; 
+        this.ancho = ancho;
+        this.alto = alto; 
+        this.esPlantable = esPlantable; 
+        this.color = color;
 }
 
 public void dibujarse(Entorno entorno) {
