@@ -15,6 +15,8 @@ public class ZombieGrinch {
      * Si quieres que los zombies sean más rápidos, resistentes o grandes,
      * solo modificas estos valores en un solo lugar.
      */
+	private BolaDeNieve bola;
+	private int temporizadorDisparo = 0;
     private static final double VELOCIDAD = 0.5;
     private static final int VIDA_INICIAL = 4;
     private static final double DIAMETRO_ZOMBIE = 45;
@@ -70,6 +72,9 @@ public class ZombieGrinch {
         // 2. DIBUJAR EL ZOMBI
         // Dibuja el zombi (círculo verde) ENCIMA del aura.
         entorno.dibujarCirculo(this.x, this.y, DIAMETRO_ZOMBIE, Color.GREEN);
+        if (this.bola != null) {
+            this.bola.dibujarse(entorno);
+        }
     }
 
     /**
@@ -78,6 +83,24 @@ public class ZombieGrinch {
      */
     public void moverse() {
         this.x -= VELOCIDAD;
+        this.temporizadorDisparo++;
+        
+        // Si pasaron 300 frames (aprox 4 seg) y no hay bola, DISPARA
+        if (this.temporizadorDisparo > 300 && this.bola == null) {
+            // Crea la bola un poco a la izquierda del zombie
+            this.bola = new BolaDeNieve(this.x - 20, this.y);
+            this.temporizadorDisparo = 0; // Reinicia el contador
+        }
+
+        // Si la bola existe, moverla
+        if (this.bola != null) {
+            this.bola.mover();
+            
+            // Si se sale de la pantalla por la izquierda, borrarla
+            if (this.bola.getX() < 0) {
+                this.bola = null;
+            }
+        }
     }
 
     /**
@@ -115,5 +138,12 @@ public class ZombieGrinch {
      */
     public int getVida() {
         return this.vida;
+    }
+    public BolaDeNieve getBola() {
+        return this.bola;
+    }
+
+    public void borrarBola() {
+        this.bola = null;
     }
 }

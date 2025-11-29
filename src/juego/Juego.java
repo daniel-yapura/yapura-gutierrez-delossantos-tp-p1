@@ -334,7 +334,7 @@ public class Juego extends InterfaceJuego {
                 }
             }
         }
-
+        chequearColisionesDisparosZombies();
         chequearColisionesDisparos();
         chequearCondicionDerrota();
         chequearCondicionVictoria();
@@ -375,6 +375,49 @@ public class Juego extends InterfaceJuego {
                         if (this.zombies[z].getVida() == 0) { // Usa getter
                             this.zombies[z] = null; // El zombi muere
                             this.cont_zombies++; // Sumamos 1 al contador
+                        }
+                    }
+                }
+            }
+        }
+    }
+    private void chequearColisionesDisparosZombies() {
+        // 1. Recorremos los ZOMBIES
+        for (int z = 0; z < this.zombies.length; z++) {
+            
+            // Verificamos si el zombie existe y tiene una bola disparada
+            if (this.zombies[z] != null && this.zombies[z].getBola() != null) {
+                
+                // 2. Recorremos las PLANTAS
+                for (int i = 0; i < this.rosas.length; i++) {
+                    
+                    if (this.rosas[i] != null) {
+                        
+                        // Obtenemos coordenadas para verificar colisión
+                        double bolaX = this.zombies[z].getBola().getX();
+                        double bolaY = this.zombies[z].getBola().getY();
+                        double plantaX = this.rosas[i].getX();
+                        double plantaY = this.rosas[i].getY();
+
+                        // 3. Chequeamos choque 
+                        if (hayColision(bolaX, bolaY, plantaX, plantaY)) {
+                            
+                            // IMPACTO:
+                            this.zombies[z].borrarBola();   // La bola desaparece
+                            this.rosas[i].recibirDanio(25); // La planta pierde vida
+
+                            // Si la planta muere...
+                            if (this.rosas[i].estaMuerta()) {
+                                this.rosas[i] = null; // La eliminamos del juego
+                                
+                                
+                                if (this.plantaSeleccionada == this.rosas[i]) {
+                                    this.plantaSeleccionada = null;
+                                }
+                            }
+                            
+                            // Importante: Break para que la bola no mate 2 plantas a la vez
+                            break; 
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package juego;
-
+import java.awt.Image;
+import entorno.Herramientas;
 import java.awt.Color;
 import entorno.Entorno;
 
@@ -16,6 +17,8 @@ public class RoseBlade {
      * Si quieres que la planta se mueva más rápido o cambie de tamaño,
      * solo modificas estos valores en un solo lugar.
      */
+	private Image imagen;
+	private int vida = 100; // Vida inicial
     private static final double VELOCIDAD_MOVIMIENTO = 4;
     private static final double DIAMETRO_PLANTA = 45;
     private static final double DIAMETRO_BORDE = 50;
@@ -45,7 +48,7 @@ public class RoseBlade {
         this.x = x;
         this.y = y;
         this.bola = null;
-        
+        this.imagen = Herramientas.cargarImagen("recursos/ROSEBLADE.png");
         // El objetivo inicial es la misma posición (no se mueve)
         this.targetX = x;
         this.targetY = y;
@@ -63,7 +66,10 @@ public class RoseBlade {
         if (estaSeleccionada) {
             entorno.dibujarCirculo(this.x, this.y, DIAMETRO_BORDE, Color.MAGENTA);
         }
-        entorno.dibujarCirculo(this.x, this.y, DIAMETRO_PLANTA, Color.RED);
+        //entorno.dibujarCirculo(this.x, this.y, DIAMETRO_PLANTA, Color.RED);
+        if (this.imagen != null) {
+            entorno.dibujarImagen(this.imagen, this.x, this.y, 0, 0.125); 
+        }
     }
     
     /**
@@ -75,7 +81,14 @@ public class RoseBlade {
             this.bola = new BolaDeFuego(this.x, this.y);
         }
     }
-
+    public void recibirDanio(int cantidad) {
+        this.vida -= cantidad;
+        System.out.println("Planta herida! Vida restante: " + this.vida);
+    }
+    
+    public boolean estaMuerta() {
+        return this.vida <= 0;
+    }
     /**
      * Actualiza la posición de la planta en cada frame,
      * moviéndola suavemente hacia su 'target'.
