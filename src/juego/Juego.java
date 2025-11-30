@@ -454,7 +454,6 @@ public class Juego extends InterfaceJuego {
                     }
                 }
 
-                // 2. REVISAR NUECES (¡ESTO FALTABA!)
                 // Si la bola sigue existiendo (no chocó contra rosa), chequeamos nueces
                 if (this.zombies[z].getBola() != null) {
                     for (int k = 0; k < this.nueces.length; k++) {
@@ -581,9 +580,7 @@ public class Juego extends InterfaceJuego {
             moverCualquierPlanta(this.plantaSeleccionada);
         }
         
-        // CASO B: MOVIENDO NUEZ
-        // Nota: Agregale un método 'estaMoviendose()' a WallNut similar al de RoseBlade para que esto compile bien
-        // O saca la condición !estaMoviendose() si no te importa que se mueva raro.
+        
         else if (this.nuezSeleccionada != null) { 
             moverCualquierNuez(this.nuezSeleccionada);
         }
@@ -619,18 +616,14 @@ public class Juego extends InterfaceJuego {
      */
     private void manejarClicsModoJugando() {
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
-            
-            // Prioridad 1: Si ya tenemos una planta seleccionada, el clic es para deseleccionar.
-            if (this.plantaSeleccionada != null) {
+           
+            if (intentarAgarrarCarta()) {
+                manejarDeseleccion(); 
+                return; 
+            }
+            boolean clickeoAlgunaPlanta = intentarSeleccionarPlanta();
+            if (!clickeoAlgunaPlanta) {
                 manejarDeseleccion();
-            } 
-            // Prioridad 2: Si no, intentamos seleccionar algo.
-            else {
-                // Primero revisa si el clic fue en una carta...
-                if (!intentarAgarrarCarta()) {
-                    // ...si no, intenta seleccionar una planta del tablero.
-                    intentarSeleccionarPlanta();
-                }
             }
         }
     }
