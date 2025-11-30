@@ -68,7 +68,7 @@ public class Juego extends InterfaceJuego {
         // 2. Inicializa los arrays (contenedores)
         this.tablero = new Casilla[FILAS * COLUMNAS];
         this.rosas = new RoseBlade[10];
-        this.zombies = new ZombieGrinch[5];
+        this.zombies = new ZombieGrinch[7];
         this.regalos = new Regalo[FILAS];
         this.cartas = new CartaPlanta[3];
         this.nueces = new WallNut[10];
@@ -366,8 +366,15 @@ public class Juego extends InterfaceJuego {
                 
                 Casilla casillaSpawn = this.tablero[indiceCasilla];
                 
-                // MEJORA: Asumimos que ZombieGrinch también tiene getters (getX, getY).
-                this.zombies[z] = new ZombieGrinch(this.entorno.ancho() + 50, casillaSpawn.getCentroY());
+                // GENERAR TIPO ALEATORIO (1, 2 o 3)
+                // Math.random() da entre 0.0 y 0.999...
+                // * 3 da entre 0.0 y 2.999...
+                // (int) lo corta a 0, 1 o 2.
+                // + 1 lo transforma en 1, 2 o 3.
+                int tipoAleatorio = (int)(Math.random() * 3) + 1;
+                
+                // Creamos el zombie pasando el tipo nuevo
+                this.zombies[z] = new ZombieGrinch(this.entorno.ancho() + 50, casillaSpawn.getCentroY(), tipoAleatorio);
                 break; // Solo genera un zombi a la vez
             } 
         } 
@@ -613,18 +620,17 @@ public class Juego extends InterfaceJuego {
     private void manejarClicsModoJugando() {
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
             
-            if (intentarAgarrarCarta()) {
-                manejarDeseleccion(); // Si agarro carta, suelto cualquier selección del tablero
-                return;
-            }
-
-            // 2. Si no es carta, intentamos seleccionar una PLANTA del tablero
-            boolean clickeoAlgunaPlanta = intentarSeleccionarPlanta();
-            
-            // 3. Lógica de Deselección:
-            // Si NO clickeó ninguna planta (click en el pasto), soltamos todo.
-            if (!clickeoAlgunaPlanta) {
+            // Prioridad 1: Si ya tenemos una planta seleccionada, el clic es para deseleccionar.
+            if (this.plantaSeleccionada != null) {
                 manejarDeseleccion();
+            } 
+            // Prioridad 2: Si no, intentamos seleccionar algo.
+            else {
+                // Primero revisa si el clic fue en una carta...
+                if (!intentarAgarrarCarta()) {
+                    // ...si no, intenta seleccionar una planta del tablero.
+                    intentarSeleccionarPlanta();
+                }
             }
         }
     }
@@ -687,7 +693,7 @@ public class Juego extends InterfaceJuego {
             if (this.nueces[i] != null && hayColision(this.nueces[i].getX(), this.nueces[i].getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
                 this.nuezSeleccionada = this.nueces[i];
                 this.plantaSeleccionada = null; // Soltamos la rosa si teníamos una
-                return true; 
+                return true; // ¡Encontramos una!
             }
         }
         

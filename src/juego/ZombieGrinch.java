@@ -1,158 +1,129 @@
 package juego;
-import java.awt.Image;
-import entorno.Herramientas;
-import java.awt.Color;
-import entorno.Entorno;
 
-/**
- * Representa al enemigo "ZombieGrinch".
- * Es responsable de gestionar su propio movimiento, dibujado y vida.
- */
+import java.awt.Color;
+import java.awt.Image;
+import entorno.Entorno;
+import entorno.Herramientas;
+
 public class ZombieGrinch {
     
     // --- CONSTANTES ---
-    /**
-     * MEJORA: Se extrajeron los "números mágicos" a constantes.
-     * Si quieres que los zombies sean más rápidos, resistentes o grandes,
-     * solo modificas estos valores en un solo lugar.
-     */
-	private BolaDeNieve bola;
-	private int temporizadorDisparo = 0;
-    private static final double VELOCIDAD = 0.5;
-    private static final int VIDA_INICIAL = 4;
-    private static final double DIAMETRO_ZOMBIE = 45;
+    private BolaDeNieve bola;
+    private int temporizadorDisparo = 0;
+    
+    private double velocidad; 
+    private int vidaInicial; 
+    
     private static final double DIAMETRO_AURA = 50;
-    private Image imagen;
     private boolean estaComiendo = false;
 
     // --- ATRIBUTOS ---
-    /**
-     * MEJORA CRÍTICA: Se encapsularon las variables como 'private'.
-     * Esto previene que la clase 'Juego' modifique la 'vida' o 'x'
-     * del zombi por accidente. El zombi es el ÚNICO responsable
-     * de modificar sus propios atributos.
-     */
-    private double x; // Coordenada X (centro)
-    private double y; // Coordenada Y (centro)
-    private int vida; // Salud del zombi
+    private double x;
+    private double y;
+    private int vida;
+    private int tipo; // 1: Normal, 2: Rápido, 3: Tanque
+    private Image imagen;
 
     /**
-     * Constructor del Zombi.
-     * @param x Posición inicial en x (centro)
-     * @param y Posición inicial en y (centro)
+     * Constructor modificado que acepta el TIPO de zombie.
      */
-    public ZombieGrinch(double x, double y) {
+    public ZombieGrinch(double x, double y, int tipo) {
         this.x = x;
         this.y = y;
-        this.vida = VIDA_INICIAL; // Usa la constante
+        this.tipo = tipo;
+
+        String rutaImagen = ""; 
+
+        if (this.tipo == 1) { 
+            // TIPO 1: NORMAL (Equilibrado)
+            this.vida = 4;
+            this.vidaInicial = 4;
+            this.velocidad = 0.5;
+            rutaImagen = "recursos/ZOMBIEGRINCH.png"; 
+        } 
+        else if (this.tipo == 2) { 
+            // TIPO 2: RUNNER (Rápido pero débil)
+            this.vida = 2;
+            this.vidaInicial = 2;
+            this.velocidad = 0.95; 
+            rutaImagen = "recursos/ZOMBIERAPIDO.png";        } 
+        else if (this.tipo == 3) { 
+            // TIPO 3: TANK (Lento pero muy resistente)
+            this.vida = 8;       
+            this.vidaInicial = 8;
+            this.velocidad = 0.15; 
+            rutaImagen = "recursos/ZOMBIETANQUE.png"; 
+            } else {
+            // Por defecto
+            this.vida = 4;
+            this.vidaInicial = 4;
+            this.velocidad = 0.3;
+            rutaImagen = "recursos/ZOMBIEGRINCH.png";
+        }
+
+        // CARGA DE IMAGEN CENTRALIZADA
+        // Usamos la variable 'rutaImagen' que definimos arriba
         try {
-            this.imagen = Herramientas.cargarImagen("recursos/ZOMBIEGRINCH.png");
+            this.imagen = Herramientas.cargarImagen(rutaImagen);
         } catch (Exception e) {
-            System.err.println("No se encontró la imagen del zombie.");
+            System.err.println("Error cargando imagen: " + rutaImagen);
             this.imagen = null;
         }
     }
-    
-    
-    // --- MÉTODOS PÚBLICOS ---
 
-    /**
-     * Dibuja el zombi (círculo verde) y un "aura" o "capa"
-     * que indica su vida restante (basado en 4 de vida total).
-     * @param entorno El contexto gráfico donde se dibujará.
-     */
     public void dibujarse(Entorno entorno) {
+        // 1. DIBUJAR EL AURA (Vida)
+       
         
-    	
-        
-        // 2. DIBUJAR EL ZOMBIE (Imagen)
+        // 2. DIBUJAR EL ZOMBIE
         if (this.imagen != null) {
-            // Ajustá la escala (0.2) según el tamaño de tu foto
-            entorno.dibujarImagen(this.imagen, this.x, this.y, 0, 0.2); 
+            double escala = 0.2;
+            if (this.tipo == 3) escala = 0.2; 
+            
+            entorno.dibujarImagen(this.imagen, this.x, this.y, 0, escala); 
         } else {
-            // Si falla la imagen, dibujamos el viejo círculo verde
-            entorno.dibujarCirculo(this.x, this.y, 45, Color.GREEN);
+            Color c = Color.GREEN;
+            if (this.tipo == 2) c = Color.ORANGE;
+            if (this.tipo == 3) c = Color.DARK_GRAY;
+            entorno.dibujarCirculo(this.x, this.y, 45, c);
         }
 
-        // 3. DIBUJAR LA BOLA DE NIEVE (Si disparó)
+        // 3. DIBUJAR LA BOLA
         if (this.bola != null) {
             this.bola.dibujarse(entorno);
         }
     }
 
-    /**
-     * Mueve el zombi un paso hacia la izquierda,
-     * basado en su constante de VELOCIDAD.
-     */
     public void moverse() {
-       // this.x -= VELOCIDAD;
         this.temporizadorDisparo++;
         
-        // Si pasaron 300 frames (aprox 4 seg) y no hay bola, DISPARA
         if (this.temporizadorDisparo > 300 && this.bola == null) {
-            // Crea la bola un poco a la izquierda del zombie
             this.bola = new BolaDeNieve(this.x - 20, this.y);
-            this.temporizadorDisparo = 0; // Reinicia el contador
+            this.temporizadorDisparo = 0;
         }
 
-        // Si la bola existe, moverla
         if (this.bola != null) {
             this.bola.mover();
-            
-            // Si se sale de la pantalla por la izquierda, borrarla
             if (this.bola.getX() < 0) {
                 this.bola = null;
             }
         }
+        
         if (!this.estaComiendo) {
-            this.x -= VELOCIDAD;
+            this.x -= this.velocidad; 
         }
     }
 
-    /**
-     * Reduce la vida del zombi en 1.
-     * Llamado por 'Juego' durante una colisión.
-     */
     public void recibirDisparo() {
         this.vida -= 1;
     }
     
-    // --- GETTERS ---
-    /**
-     * MEJORA: Se añaden 'Getters' públicos.
-     * Ya que los atributos son 'private', la clase Juego necesita
-     * una forma de LEER (pero no escribir) la posición y la vida
-     * para el chequeo de colisiones y condiciones de victoria.
-     */
+    // --- GETTERS y SETTERS ---
+    public double getX() { return this.x; }
+    public double getY() { return this.y; }
+    public int getVida() { return this.vida; }
     
-    /**
-     * @return La coordenada X actual del centro del zombi.
-     */
-    public double getX() {
-        return this.x;
-    }
-    
-    /**
-     * @return La coordenada Y actual del centro del zombi.
-     */
-    public double getY() {
-        return this.y;
-    }
-    
-    /**
-     * @return La vida restante actual del zombi.
-     */
-    public int getVida() {
-        return this.vida;
-    }
-    public BolaDeNieve getBola() {
-        return this.bola;
-    }
-
-    public void borrarBola() {
-        this.bola = null;
-    }
-    public void setComiendo(boolean comiendo) {
-        this.estaComiendo = comiendo;
-    }
+    public BolaDeNieve getBola() { return this.bola; }
+    public void borrarBola() { this.bola = null; }
+    public void setComiendo(boolean comiendo) { this.estaComiendo = comiendo; }
 }
