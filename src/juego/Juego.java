@@ -35,6 +35,9 @@ public class Juego extends InterfaceJuego {
     private ZombieGrinch[] zombies;
     private Regalo[] regalos;
     private CartaPlanta[] cartas;
+    private WallNut[] nueces; // El arreglo de nueces
+    private WallNut nuezSeleccionada; 
+    private WallNut nuezParaPlantar;
     
     // Contadores para la condición de victoria
     private int cant_zombies; // Objetivo total de zombies a eliminar
@@ -65,14 +68,14 @@ public class Juego extends InterfaceJuego {
         // 2. Inicializa los arrays (contenedores)
         this.tablero = new Casilla[FILAS * COLUMNAS];
         this.rosas = new RoseBlade[10];
-        this.zombies = new ZombieGrinch[10];
+        this.zombies = new ZombieGrinch[5];
         this.regalos = new Regalo[FILAS];
         this.cartas = new CartaPlanta[3];
-        
+        this.nueces = new WallNut[10];
         // 3. Crea las cartas de la UI
-        this.cartas[0] = new CartaPlanta(20, 20, 90, 70, 0); // 0 = RoseBlade
-        // this.cartas[1] y [2] quedan como null (espacio para futuras plantas)
-
+        this.cartas[0] = new CartaPlanta(20, 20, 90, 70, 0); 
+        this.cartas[1] = new CartaPlanta(120, 20, 90, 70, 1);
+        
         // 4. Calcula medidas y crea el tablero
         // MEJORA: Estas variables ahora son 'locales' al constructor.
         // No necesitan ser variables de instancia, lo que limpia la clase.
@@ -158,6 +161,15 @@ public class Juego extends InterfaceJuego {
             // --- 3. JUEGO TERMINADO ---
             // Si el juego terminó, dibujamos el mensaje de derrota o victoria
             this.dibujarMensajeFinDeJuego();
+        }
+        for (WallNut w : this.nueces) {
+            if (w != null) {
+                boolean esSel = (w == this.nuezSeleccionada);
+                w.dibujarse(this.entorno, esSel);
+            }
+        }
+        for (WallNut w : this.nueces) {
+            if (w != null) w.actualizarMovimiento();
         }
     }
 
@@ -334,6 +346,7 @@ public class Juego extends InterfaceJuego {
                 }
             }
         }
+        chequearMordiscosDeZombies();
         chequearColisionesDisparosZombies();
         chequearColisionesDisparos();
         chequearCondicionDerrota();
@@ -359,6 +372,40 @@ public class Juego extends InterfaceJuego {
             } 
         } 
     }
+    private void chequearMordiscosDeZombies() {
+        for (ZombieGrinch z : this.zombies) {
+            if (z != null) {
+                boolean estaTocandoAlgunaNuez = false;
+
+                for (int i = 0; i < this.nueces.length; i++) {
+                    if (this.nueces[i] != null) {
+                        // Si colisionan CUERPO A CUERPO (distancia corta)
+                        if (hayColision(z.getX(), z.getY(), this.nueces[i].getX(), this.nueces[i].getY())) {
+                            
+                            // 1. El zombie se frena
+                            estaTocandoAlgunaNuez = true;
+                            z.setComiendo(true);
+                            
+                            // 2. La nuez recibe daño (poquito pero constante, porque es por tick)
+                            // Si le ponés mucho daño acá, la nuez desaparece en 1 segundo.
+                            this.nueces[i].recibirDanio(1); 
+                            
+                            // 3. Si la nuez muere
+                            if (this.nueces[i].estaMuerta()) {
+                                this.nueces[i] = null;
+                                z.setComiendo(false); // El zombie vuelve a caminar
+                            }
+                        }
+                    }
+                }
+                
+                // Si el zombie no está tocando ninguna nuez (ej: ya se la comió), camina.
+                if (!estaTocandoAlgunaNuez) {
+                    z.setComiendo(false);
+                }
+            }
+        }
+    }
 
     /**
      * Revisa colisiones entre BolasDeFuego y Zombies.
@@ -382,42 +429,38 @@ public class Juego extends InterfaceJuego {
         }
     }
     private void chequearColisionesDisparosZombies() {
-        // 1. Recorremos los ZOMBIES
         for (int z = 0; z < this.zombies.length; z++) {
-            
-            // Verificamos si el zombie existe y tiene una bola disparada
             if (this.zombies[z] != null && this.zombies[z].getBola() != null) {
                 
-                // 2. Recorremos las PLANTAS
+                // 1. REVISAR ROSAS (Esto ya lo tenías)
                 for (int i = 0; i < this.rosas.length; i++) {
-                    
                     if (this.rosas[i] != null) {
-                        
-                        // Obtenemos coordenadas para verificar colisión
-                        double bolaX = this.zombies[z].getBola().getX();
-                        double bolaY = this.zombies[z].getBola().getY();
-                        double plantaX = this.rosas[i].getX();
-                        double plantaY = this.rosas[i].getY();
-
-                        // 3. Chequeamos choque 
-                        if (hayColision(bolaX, bolaY, plantaX, plantaY)) {
-                            
-                            // IMPACTO:
-                            this.zombies[z].borrarBola();   // La bola desaparece
-                            this.rosas[i].recibirDanio(25); // La planta pierde vida
-
-                            // Si la planta muere...
+                        if (hayColision(this.zombies[z].getBola().getX(), this.zombies[z].getBola().getY(), this.rosas[i].getX(), this.rosas[i].getY())) {
+                            this.zombies[z].borrarBola();
+                            this.rosas[i].recibirDanio(25);
                             if (this.rosas[i].estaMuerta()) {
-                                this.rosas[i] = null; // La eliminamos del juego
-                                
-                                
-                                if (this.plantaSeleccionada == this.rosas[i]) {
-                                    this.plantaSeleccionada = null;
-                                }
+                                if (this.plantaSeleccionada == this.rosas[i]) this.plantaSeleccionada = null;
+                                this.rosas[i] = null;
                             }
-                            
-                            // Importante: Break para que la bola no mate 2 plantas a la vez
-                            break; 
+                            break; // Romper loop si golpea rosa
+                        }
+                    }
+                }
+
+                // 2. REVISAR NUECES (¡ESTO FALTABA!)
+                // Si la bola sigue existiendo (no chocó contra rosa), chequeamos nueces
+                if (this.zombies[z].getBola() != null) {
+                    for (int k = 0; k < this.nueces.length; k++) {
+                        if (this.nueces[k] != null) {
+                            if (hayColision(this.zombies[z].getBola().getX(), this.zombies[z].getBola().getY(), this.nueces[k].getX(), this.nueces[k].getY())) {
+                                this.zombies[z].borrarBola();
+                                this.nueces[k].recibirDanio(25);
+                                if (this.nueces[k].estaMuerta()) {
+                                    if (this.nuezSeleccionada == this.nueces[k]) this.nuezSeleccionada = null;
+                                    this.nueces[k] = null;
+                                }
+                                break; // Romper loop si golpea nuez
+                            }
                         }
                     }
                 }
@@ -509,18 +552,57 @@ public class Juego extends InterfaceJuego {
      * Este método actúa como un "router" o "aiguillaje".
      */
     private void manejarEstadoJugador() {
-        // Estado 1: Sosteniendo una planta
+        // Estado 1: Sosteniendo una ROSA
         if (this.plantaParaPlantar != null) {
-            manejarEstadoSosteniendoPlanta();
+            manejarEstadoSosteniendoPlanta(); 
         } 
-        // Estado 2: Jugando (no sostiene nada)
+        // Estado 2: Sosteniendo una NUEZ (NUEVO)
+        else if (this.nuezParaPlantar != null) {
+            manejarEstadoSosteniendoNuez();
+        }
+        // Estado 3: Jugando normal
         else {
             manejarClicsModoJugando();
         }
         
-        // Lógica de movimiento (independiente de los clics)
-        if (this.plantaSeleccionada != null) {
-            manejarMovimientoPlanta();
+        // Movimiento WASD (router)
+        manejarMovimientoConTeclado1();
+    }
+    private void manejarMovimientoConTeclado1() {
+        // CASO A: MOVIENDO ROSA
+        if (this.plantaSeleccionada != null && !this.plantaSeleccionada.estaMoviendose()) {
+            moverCualquierPlanta(this.plantaSeleccionada);
+        }
+        
+        // CASO B: MOVIENDO NUEZ
+        // Nota: Agregale un método 'estaMoviendose()' a WallNut similar al de RoseBlade para que esto compile bien
+        // O saca la condición !estaMoviendose() si no te importa que se mueva raro.
+        else if (this.nuezSeleccionada != null) { 
+            moverCualquierNuez(this.nuezSeleccionada);
+        }
+    }
+    private void manejarEstadoSosteniendoNuez() {
+        // CORRECCIÓN: Usar snapAPosicion para que siga al mouse INSTANTÁNEAMENTE
+        this.nuezParaPlantar.snapAPosicion(this.entorno.mouseX(), this.entorno.mouseY());
+        this.nuezParaPlantar.dibujarse(this.entorno, false);
+
+        if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
+            for (int i = 0; i < this.tablero.length; i++) {
+                Casilla celda = this.tablero[i];
+                if (celda.fueClickeada(this.entorno.mouseX(), this.entorno.mouseY())) {
+                    if (celda.esPlantable() && !estaCasillaOcupada(celda.getCentroX(), celda.getCentroY())) {
+                        for (int k = 0; k < this.nueces.length; k++) {
+                            if (this.nueces[k] == null) {
+                                // CORRECCIÓN: Al crearla, usá snap para que nazca centrada
+                                this.nueces[k] = new WallNut(celda.getCentroX(), celda.getCentroY());
+                                this.nuezParaPlantar = null; 
+                                this.proximoTickParaPlantar = this.entorno.numeroDeTick() + COOLDOWN_DURACION;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -531,17 +613,18 @@ public class Juego extends InterfaceJuego {
     private void manejarClicsModoJugando() {
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
             
-            // Prioridad 1: Si ya tenemos una planta seleccionada, el clic es para deseleccionar.
-            if (this.plantaSeleccionada != null) {
+            if (intentarAgarrarCarta()) {
+                manejarDeseleccion(); // Si agarro carta, suelto cualquier selección del tablero
+                return;
+            }
+
+            // 2. Si no es carta, intentamos seleccionar una PLANTA del tablero
+            boolean clickeoAlgunaPlanta = intentarSeleccionarPlanta();
+            
+            // 3. Lógica de Deselección:
+            // Si NO clickeó ninguna planta (click en el pasto), soltamos todo.
+            if (!clickeoAlgunaPlanta) {
                 manejarDeseleccion();
-            } 
-            // Prioridad 2: Si no, intentamos seleccionar algo.
-            else {
-                // Primero revisa si el clic fue en una carta...
-                if (!intentarAgarrarCarta()) {
-                    // ...si no, intenta seleccionar una planta del tablero.
-                    intentarSeleccionarPlanta();
-                }
             }
         }
     }
@@ -557,41 +640,68 @@ public class Juego extends InterfaceJuego {
                 // Comprobación 1: ¿El cooldown terminó?
                 if (this.entorno.numeroDeTick() >= this.proximoTickParaPlantar) {
                     
-                    // Comprobación 2: ¿Hay espacio en el tablero?
-                    if (this.hayEspacioParaPlantar()) {
+                    int idCarta = this.cartas[i].getId(); 
+
+                    // SI ES ROSEBLADE (ID 0)
+                    if (idCarta == 0 && hayEspacioEnArray(this.rosas)) {
                         this.plantaParaPlantar = new RoseBlade(this.entorno.mouseX(), this.entorno.mouseY());
+                        this.nuezParaPlantar = null; // Aseguramos que la otra mano esté vacía
+                        return true;
+                    }
+                    
+                    // SI ES WALLNUT (ID 1)
+                    else if (idCarta == 1 && hayEspacioEnArray(this.nueces)) {
+                        this.nuezParaPlantar = new WallNut(this.entorno.mouseX(), this.entorno.mouseY());
+                        this.plantaParaPlantar = null; // Aseguramos que la otra mano esté vacía
+                        return true;
                     }
                 }
-                return true; // Clic fue en una carta (incluso si estaba en cooldown/lleno)
             }
         }
-        return false; // El clic no fue en ninguna carta
+        return false;
+    }
+    private boolean hayEspacioEnArray(Object[] array) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == null) {
+                return true; // Encontró un lugar vacío
+            }
+        }
+        return false; // El array está lleno
     }
 
     /**
      * Revisa si el clic fue sobre una planta plantada y la selecciona.
      */
-    private void intentarSeleccionarPlanta() {
+    private boolean intentarSeleccionarPlanta() {
+        // 1. Probar con ROSAS
         for (int i = 0; i < this.rosas.length; i++) {
-            // MEJORA: Usar getters
             if (this.rosas[i] != null && hayColision(this.rosas[i].getX(), this.rosas[i].getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
                 this.plantaSeleccionada = this.rosas[i];
-                break; // Deja de buscar, ya encontró una
+                this.nuezSeleccionada = null; // Soltamos la nuez si teníamos una
+                return true; 
             }
         }
+        
+        // 2. Probar con NUECES
+        for (int i = 0; i < this.nueces.length; i++) {
+            if (this.nueces[i] != null && hayColision(this.nueces[i].getX(), this.nueces[i].getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
+                this.nuezSeleccionada = this.nueces[i];
+                this.plantaSeleccionada = null; // Soltamos la rosa si teníamos una
+                return true; 
+            }
+        }
+        
+        return false; // No clickeamos ninguna planta
     }
+    
     
     /**
      * Lógica para deseleccionar una planta movible.
      * Un clic en sí misma o en cualquier otro lugar la deselecciona.
      */
     private void manejarDeseleccion() {
-        // MEJORA: Usar getters
-        if (hayColision(this.plantaSeleccionada.getX(), this.plantaSeleccionada.getY(), this.entorno.mouseX(), this.entorno.mouseY())) {
-            this.plantaSeleccionada = null; // Clic en sí misma
-        } else {
-            this.plantaSeleccionada = null; // Clic en cualquier otro lugar
-        }
+        this.plantaSeleccionada = null;
+        this.nuezSeleccionada = null;
     }
 
     /**
@@ -638,52 +748,112 @@ public class Juego extends InterfaceJuego {
      * Se encarga de FIJAR EL OBJETIVO de la planta seleccionada
      * cuando se presiona WASD, solo si la planta no se está moviendo.
      */
-    private void manejarMovimientoPlanta() {
+    private void manejarMovimientoConTeclado() {
+        // 1. Si hay una ROSA seleccionada y quieta, la movemos
+        if (this.plantaSeleccionada != null && !this.plantaSeleccionada.estaMoviendose()) {
+            moverCualquierPlanta(this.plantaSeleccionada);
+        }
         
-        // Solo revisamos las teclas si la planta NO se está moviendo.
-        if (!this.plantaSeleccionada.estaMoviendose()) {
+        // 2. Si hay una NUEZ seleccionada (aunque no tenga animación de moverse, usamos la lógica igual)
+        else if (this.nuezSeleccionada != null) {
+            moverCualquierNuez(this.nuezSeleccionada);
+        }
+    }
+    
+    private void moverCualquierNuez(WallNut n) {
+        double saltoHorizontal = this.tablero[0].getAncho(); 
+        double saltoVertical = this.tablero[0].getAlto(); 
+
+        // --- Arriba (W) ---
+        if (this.entorno.sePresiono('w') || this.entorno.sePresiono(this.entorno.TECLA_ARRIBA)) {
+            // CORRECCIÓN: Usamos getTargetY() en vez de getY()
+            double nuevaY = n.getTargetY() - saltoVertical;
+            double limiteSuperior = this.tablero[0].getCentroY();
             
-            double saltoHorizontal = this.tablero[0].getAncho(); 
-            double saltoVertical = this.tablero[0].getAlto(); 
-
-            // --- Mover Arriba (W) ---
-            if (this.entorno.sePresiono('w') || this.entorno.sePresiono(this.entorno.TECLA_ARRIBA)) {
-                // MEJORA: Usar getters
-                double nuevaY = this.plantaSeleccionada.getY() - saltoVertical;
-                double limiteSuperior = this.tablero[0].getCentroY();
-                if (nuevaY >= limiteSuperior && !estaCasillaOcupada(this.plantaSeleccionada.getX(), nuevaY)) {
-                    this.plantaSeleccionada.setTarget(this.plantaSeleccionada.getX(), nuevaY);
-                }
+            // Validamos contra nuevaY (destino) y getTargetX (destino actual)
+            if (nuevaY >= limiteSuperior && !estaCasillaOcupada(n.getTargetX(), nuevaY)) {
+                n.setTarget(n.getTargetX(), nuevaY);
             }
+        }
+        
+        // --- Abajo (S) ---
+        if (this.entorno.sePresiono('s') || this.entorno.sePresiono(this.entorno.TECLA_ABAJO)) {
+            double nuevaY = n.getTargetY() + saltoVertical;
+            int indiceLimite = ((FILAS - 1) * COLUMNAS);
+            double limiteInferior = this.tablero[indiceLimite].getCentroY();
             
-            // --- Mover Abajo (S) ---
-            if (this.entorno.sePresiono('s') || this.entorno.sePresiono(this.entorno.TECLA_ABAJO)) {
-                double nuevaY = this.plantaSeleccionada.getY() + saltoVertical;
-                int indiceLimite = ((FILAS - 1) * COLUMNAS);
-                double limiteInferior = this.tablero[indiceLimite].getCentroY();
-                if (nuevaY <= limiteInferior && !estaCasillaOcupada(this.plantaSeleccionada.getX(), nuevaY)) {
-                    this.plantaSeleccionada.setTarget(this.plantaSeleccionada.getX(), nuevaY);
-                }
+            if (nuevaY <= limiteInferior && !estaCasillaOcupada(n.getTargetX(), nuevaY)) {
+                n.setTarget(n.getTargetX(), nuevaY);
             }
+        }
 
-            // --- Mover Izquierda (A) ---
-            if (this.entorno.sePresiono('a') || this.entorno.sePresiono(this.entorno.TECLA_IZQUIERDA)) {
-                double nuevaX = this.plantaSeleccionada.getX() - saltoHorizontal;
-                int indiceLimite = (0 * COLUMNAS) + 1; // Columna 1
-                double limiteIzquierdo = this.tablero[indiceLimite].getCentroX();
-                if (nuevaX >= limiteIzquierdo && !estaCasillaOcupada(nuevaX, this.plantaSeleccionada.getY())) {
-                    this.plantaSeleccionada.setTarget(nuevaX, this.plantaSeleccionada.getY());
-                }
+        // --- Izquierda (A) ---
+        if (this.entorno.sePresiono('a') || this.entorno.sePresiono(this.entorno.TECLA_IZQUIERDA)) {
+            // CORRECCIÓN: Usamos getTargetX() en vez de getX()
+            double nuevaX = n.getTargetX() - saltoHorizontal;
+            int indiceLimite = (0 * COLUMNAS) + 1; 
+            double limiteIzquierdo = this.tablero[indiceLimite].getCentroX();
+            
+            if (nuevaX >= limiteIzquierdo && !estaCasillaOcupada(nuevaX, n.getTargetY())) {
+                n.setTarget(nuevaX, n.getTargetY());
             }
+        }
 
-            // --- Mover Derecha (D) ---
-            if (this.entorno.sePresiono('d') || this.entorno.sePresiono(this.entorno.TECLA_DERECHA)) {
-                double nuevaX = this.plantaSeleccionada.getX() + saltoHorizontal;
-                int indiceLimite = (0 * COLUMNAS) + (COLUMNAS - 1); // Última columna
-                double limiteDerecho = this.tablero[indiceLimite].getCentroX();
-                if (nuevaX <= limiteDerecho && !estaCasillaOcupada(nuevaX, this.plantaSeleccionada.getY())) {
-                    this.plantaSeleccionada.setTarget(nuevaX, this.plantaSeleccionada.getY());
-                }
+        // --- Derecha (D) ---
+        if (this.entorno.sePresiono('d') || this.entorno.sePresiono(this.entorno.TECLA_DERECHA)) {
+            double nuevaX = n.getTargetX() + saltoHorizontal;
+            int indiceLimite = (0 * COLUMNAS) + (COLUMNAS - 1);
+            double limiteDerecho = this.tablero[indiceLimite].getCentroX();
+            
+            if (nuevaX <= limiteDerecho && !estaCasillaOcupada(nuevaX, n.getTargetY())) {
+                n.setTarget(nuevaX, n.getTargetY());
+            }
+        }
+    }
+    private void moverCualquierPlanta(RoseBlade p) {
+        double saltoHorizontal = this.tablero[0].getAncho(); 
+        double saltoVertical = this.tablero[0].getAlto(); 
+
+        // --- Arriba (W) ---
+        if (this.entorno.sePresiono('w') || this.entorno.sePresiono(this.entorno.TECLA_ARRIBA)) {
+            double nuevaY = p.getY() - saltoVertical;
+            double limiteSuperior = this.tablero[0].getCentroY();
+            
+            if (nuevaY >= limiteSuperior && !estaCasillaOcupada(p.getX(), nuevaY)) {
+                p.setTarget(p.getX(), nuevaY);
+            }
+        }
+        
+        // --- Abajo (S) ---
+        if (this.entorno.sePresiono('s') || this.entorno.sePresiono(this.entorno.TECLA_ABAJO)) {
+            double nuevaY = p.getY() + saltoVertical;
+            int indiceLimite = ((FILAS - 1) * COLUMNAS); // Última fila
+            double limiteInferior = this.tablero[indiceLimite].getCentroY();
+            
+            if (nuevaY <= limiteInferior && !estaCasillaOcupada(p.getX(), nuevaY)) {
+                p.setTarget(p.getX(), nuevaY);
+            }
+        }
+
+        // --- Izquierda (A) ---
+        if (this.entorno.sePresiono('a') || this.entorno.sePresiono(this.entorno.TECLA_IZQUIERDA)) {
+            double nuevaX = p.getX() - saltoHorizontal;
+            int indiceLimite = (0 * COLUMNAS) + 1; // Columna 1 (límite izquierdo jugable)
+            double limiteIzquierdo = this.tablero[indiceLimite].getCentroX();
+            
+            if (nuevaX >= limiteIzquierdo && !estaCasillaOcupada(nuevaX, p.getY())) {
+                p.setTarget(nuevaX, p.getY());
+            }
+        }
+
+        // --- Derecha (D) ---
+        if (this.entorno.sePresiono('d') || this.entorno.sePresiono(this.entorno.TECLA_DERECHA)) {
+            double nuevaX = p.getX() + saltoHorizontal;
+            int indiceLimite = (0 * COLUMNAS) + (COLUMNAS - 1); // Última columna
+            double limiteDerecho = this.tablero[indiceLimite].getCentroX();
+            
+            if (nuevaX <= limiteDerecho && !estaCasillaOcupada(nuevaX, p.getY())) {
+                p.setTarget(nuevaX, p.getY());
             }
         }
     }
@@ -710,11 +880,17 @@ public class Juego extends InterfaceJuego {
      * @return true si la casilla está ocupada, false en caso contrario.
      */
     private boolean estaCasillaOcupada(double x, double y) {
+        // 1. Chequear ROSAS
         for (int i = 0; i < this.rosas.length; i++) {
-            // No comprueba contra la planta que estamos moviendo
             if (this.rosas[i] != null && this.rosas[i] != this.plantaSeleccionada) {
-                // MEJORA: Usar getters
-                if (Math.abs(this.rosas[i].getX() - x) < 1 && Math.abs(this.rosas[i].getY() - y) < 1) {
+                if (Math.abs(this.rosas[i].getX() - x) < 10 && Math.abs(this.rosas[i].getY() - y) < 10) {
+                    return true;
+                }
+            }
+        }
+        for (int k = 0; k < this.nueces.length; k++) {
+            if (this.nueces[k] != null && this.nueces[k] != this.nuezSeleccionada) {
+                if (Math.abs(this.nueces[k].getX() - x) < 10 && Math.abs(this.nueces[k].getY() - y) < 10) {
                     return true;
                 }
             }

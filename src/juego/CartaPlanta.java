@@ -60,7 +60,10 @@ public class CartaPlanta {
         if (this.tipoPlanta == 0) { // 0 = RoseBlade
             entorno.dibujarCirculo(centroX, centroY, this.ancho / 2, Color.RED);
         }
-        // (Se eliminó el 'else if' de WallNut, ya que no es obligatorio)
+        else if (this.tipoPlanta == 1) { // 1 = WallNut (Nuez) - AGREGAR ESTO
+            entorno.dibujarCirculo(centroX, centroY, this.ancho / 2, Color.YELLOW);
+            
+        }
         
         // --- 3. DIBUJAR EL VELO PROGRESIVO ---
         
@@ -95,5 +98,8 @@ public class CartaPlanta {
         // está entre los bordes izquierdo/derecho E y entre los bordes sup/inf.
         return (mouseX > this.x && mouseX < this.x + this.ancho &&
                 mouseY > this.y && mouseY < this.y + this.alto);
+    }
+    public int getId() {
+        return this.tipoPlanta;
     }
 }

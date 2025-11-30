@@ -1,5 +1,6 @@
 package juego;
-
+import java.awt.Image;
+import entorno.Herramientas;
 import java.awt.Color;
 import entorno.Entorno;
 
@@ -21,6 +22,8 @@ public class ZombieGrinch {
     private static final int VIDA_INICIAL = 4;
     private static final double DIAMETRO_ZOMBIE = 45;
     private static final double DIAMETRO_AURA = 50;
+    private Image imagen;
+    private boolean estaComiendo = false;
 
     // --- ATRIBUTOS ---
     /**
@@ -42,7 +45,14 @@ public class ZombieGrinch {
         this.x = x;
         this.y = y;
         this.vida = VIDA_INICIAL; // Usa la constante
+        try {
+            this.imagen = Herramientas.cargarImagen("recursos/ZOMBIEGRINCH.png");
+        } catch (Exception e) {
+            System.err.println("No se encontró la imagen del zombie.");
+            this.imagen = null;
+        }
     }
+    
     
     // --- MÉTODOS PÚBLICOS ---
 
@@ -53,25 +63,18 @@ public class ZombieGrinch {
      */
     public void dibujarse(Entorno entorno) {
         
-        // 1. DIBUJAR LAS "CAPAS" (El Aura)
-        // MEJORA: Se usa la constante 'VIDA_INICIAL' en lugar de '4'
-        // para que la lógica no se rompa si cambias la vida.
-        if (this.vida == VIDA_INICIAL) {
-            // Vida Completa (4 golpes): Aura Blanca
-            entorno.dibujarCirculo(this.x, this.y, DIAMETRO_AURA, Color.WHITE);
-            
-        } else if (this.vida > 1) {
-            // Vida Media (3 o 2 golpes): Aura Amarilla
-            entorno.dibujarCirculo(this.x, this.y, DIAMETRO_AURA, Color.YELLOW);
-            
-        } else {
-            // Vida Baja (1 golpe): Aura Roja
-            entorno.dibujarCirculo(this.x, this.y, DIAMETRO_AURA, Color.RED);
-        }
+    	
         
-        // 2. DIBUJAR EL ZOMBI
-        // Dibuja el zombi (círculo verde) ENCIMA del aura.
-        entorno.dibujarCirculo(this.x, this.y, DIAMETRO_ZOMBIE, Color.GREEN);
+        // 2. DIBUJAR EL ZOMBIE (Imagen)
+        if (this.imagen != null) {
+            // Ajustá la escala (0.2) según el tamaño de tu foto
+            entorno.dibujarImagen(this.imagen, this.x, this.y, 0, 0.2); 
+        } else {
+            // Si falla la imagen, dibujamos el viejo círculo verde
+            entorno.dibujarCirculo(this.x, this.y, 45, Color.GREEN);
+        }
+
+        // 3. DIBUJAR LA BOLA DE NIEVE (Si disparó)
         if (this.bola != null) {
             this.bola.dibujarse(entorno);
         }
@@ -82,7 +85,7 @@ public class ZombieGrinch {
      * basado en su constante de VELOCIDAD.
      */
     public void moverse() {
-        this.x -= VELOCIDAD;
+       // this.x -= VELOCIDAD;
         this.temporizadorDisparo++;
         
         // Si pasaron 300 frames (aprox 4 seg) y no hay bola, DISPARA
@@ -100,6 +103,9 @@ public class ZombieGrinch {
             if (this.bola.getX() < 0) {
                 this.bola = null;
             }
+        }
+        if (!this.estaComiendo) {
+            this.x -= VELOCIDAD;
         }
     }
 
@@ -145,5 +151,8 @@ public class ZombieGrinch {
 
     public void borrarBola() {
         this.bola = null;
+    }
+    public void setComiendo(boolean comiendo) {
+        this.estaComiendo = comiendo;
     }
 }

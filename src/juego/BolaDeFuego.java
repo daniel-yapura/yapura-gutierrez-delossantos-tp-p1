@@ -16,7 +16,7 @@ public class BolaDeFuego {
      * Si quieres que el disparo sea más rápido o más grande,
      * solo cambias estos valores aquí, en un solo lugar.
      */
-    private static final double VELOCIDAD = 6;
+    private static final double VELOCIDAD = 7;
     private static final double DIAMETRO = 15;
 
     // --- ATRIBUTOS ---
