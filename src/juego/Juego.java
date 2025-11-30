@@ -148,6 +148,16 @@ public class Juego extends InterfaceJuego {
         this.dibujarInformacionUI();
 
         // --- 2. LÓGICA DE JUEGO (Solo si el juego NO ha terminado) ---
+        
+        for (WallNut w : this.nueces) {
+            if (w != null) {
+                boolean esSel = (w == this.nuezSeleccionada);
+                w.dibujarse(this.entorno, esSel);
+            }
+        }
+        for (WallNut w : this.nueces) {
+            if (w != null) w.actualizarMovimiento();
+        }
         if (!this.juegoTerminado) {
             
             // Actualizamos (movemos) los objetos dinámicos
@@ -166,16 +176,8 @@ public class Juego extends InterfaceJuego {
             // Si el juego terminó, dibujamos el mensaje de derrota o victoria
             this.dibujarMensajeFinDeJuego();
         }
-        for (WallNut w : this.nueces) {
-            if (w != null) {
-                boolean esSel = (w == this.nuezSeleccionada);
-                w.dibujarse(this.entorno, esSel);
-            }
-        }
-        for (WallNut w : this.nueces) {
-            if (w != null) w.actualizarMovimiento();
-        }
     }
+    
 
     // --- MÉTODOS DE AYUDA (Dividen la lógica de tick()) ---
     
