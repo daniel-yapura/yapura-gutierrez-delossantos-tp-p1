@@ -26,7 +26,11 @@ public class Juego extends InterfaceJuego {
 	private Image fondo; //variable de foto
     private static final int FILAS = 5;
     private static final int COLUMNAS = 9;
-    private static final int COOLDOWN_DURACION = 100; // Duración del cooldown en ticks
+    // Duración del cooldown en ticks
+    private static final int COOLDOWN_ROSA = 150; // Rápido
+    private static final int COOLDOWN_NUEZ = 300;
+    private int proximoTickRosa = 0; 
+    private int proximoTickNuez = 0;
     private Clip musicaFondo;
     // --- VARIABLES DE INSTANCIA ---
     private Entorno entorno;
@@ -203,15 +207,27 @@ public class Juego extends InterfaceJuego {
     private void dibujarCartas() {
         for (int i = 0; i < this.cartas.length; i++) {
             if (this.cartas[i] != null) {
-                // Calcula el progreso del cooldown (0.0 a 1.0)
                 double progreso = 1.0; 
-                if (this.entorno.numeroDeTick() < this.proximoTickParaPlantar) {
-                    double tickActual = this.entorno.numeroDeTick();
-                    double tickFin = this.proximoTickParaPlantar;
-                    double tickInicio = tickFin - COOLDOWN_DURACION;
-                    double tiempoTranscurrido = tickActual - tickInicio;
-                    progreso = tiempoTranscurrido / COOLDOWN_DURACION;
+                int id = this.cartas[i].getId();
+                double tickActual = this.entorno.numeroDeTick();
+                
+                // LÓGICA PARA LA ROSA (ID 0)
+                if (id == 0) {
+                    if (tickActual < this.proximoTickRosa) {
+                        double tickFin = this.proximoTickRosa;
+                        double tickInicio = tickFin - COOLDOWN_ROSA;
+                        progreso = (tickActual - tickInicio) / COOLDOWN_ROSA;
+                    }
+                } 
+                // LÓGICA PARA LA NUEZ (ID 1)
+                else if (id == 1) {
+                    if (tickActual < this.proximoTickNuez) {
+                        double tickFin = this.proximoTickNuez;
+                        double tickInicio = tickFin - COOLDOWN_NUEZ;
+                        progreso = (tickActual - tickInicio) / COOLDOWN_NUEZ;
+                    }
                 }
+
                 this.cartas[i].dibujarse(this.entorno, progreso);
             }
         }
@@ -586,21 +602,28 @@ public class Juego extends InterfaceJuego {
         }
     }
     private void manejarEstadoSosteniendoNuez() {
-        // CORRECCIÓN: Usar snapAPosicion para que siga al mouse INSTANTÁNEAMENTE
+        // La nuez "fantasma" sigue al mouse
         this.nuezParaPlantar.snapAPosicion(this.entorno.mouseX(), this.entorno.mouseY());
         this.nuezParaPlantar.dibujarse(this.entorno, false);
 
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
+            // Buscamos casilla clickeada
             for (int i = 0; i < this.tablero.length; i++) {
                 Casilla celda = this.tablero[i];
+                
                 if (celda.fueClickeada(this.entorno.mouseX(), this.entorno.mouseY())) {
+                    
                     if (celda.esPlantable() && !estaCasillaOcupada(celda.getCentroX(), celda.getCentroY())) {
+                        
+                        // Buscamos espacio en el array de NUECES
                         for (int k = 0; k < this.nueces.length; k++) {
                             if (this.nueces[k] == null) {
-                                // CORRECCIÓN: Al crearla, usá snap para que nazca centrada
                                 this.nueces[k] = new WallNut(celda.getCentroX(), celda.getCentroY());
-                                this.nuezParaPlantar = null; 
-                                this.proximoTickParaPlantar = this.entorno.numeroDeTick() + COOLDOWN_DURACION;
+                                
+                                this.nuezParaPlantar = null; // Soltamos
+                                
+                                // --- CAMBIO: Solo activamos el cooldown de la NUEZ ---
+                                this.proximoTickNuez = this.entorno.numeroDeTick() + COOLDOWN_NUEZ;
                                 return;
                             }
                         }
@@ -636,22 +659,24 @@ public class Juego extends InterfaceJuego {
         for (int i = 0; i < this.cartas.length; i++) {
             if (this.cartas[i] != null && this.cartas[i].fueClickeado(this.entorno.mouseX(), this.entorno.mouseY())) {
                 
-                // Comprobación 1: ¿El cooldown terminó?
-                if (this.entorno.numeroDeTick() >= this.proximoTickParaPlantar) {
-                    
-                    int idCarta = this.cartas[i].getId(); 
+                int idCarta = this.cartas[i].getId(); 
 
-                    // SI ES ROSEBLADE (ID 0)
-                    if (idCarta == 0 && hayEspacioEnArray(this.rosas)) {
+                // CASO ROSA (ID 0)
+                if (idCarta == 0) {
+                    // Chequeamos SU propio cooldown
+                    if (this.entorno.numeroDeTick() >= this.proximoTickRosa && hayEspacioEnArray(this.rosas)) {
                         this.plantaParaPlantar = new RoseBlade(this.entorno.mouseX(), this.entorno.mouseY());
-                        this.nuezParaPlantar = null; // Aseguramos que la otra mano esté vacía
+                        this.nuezParaPlantar = null; 
                         return true;
                     }
-                    
-                    // SI ES WALLNUT (ID 1)
-                    else if (idCarta == 1 && hayEspacioEnArray(this.nueces)) {
+                }
+                
+                // CASO NUEZ (ID 1)
+                else if (idCarta == 1) {
+                    // Chequeamos SU propio cooldown
+                    if (this.entorno.numeroDeTick() >= this.proximoTickNuez && hayEspacioEnArray(this.nueces)) {
                         this.nuezParaPlantar = new WallNut(this.entorno.mouseX(), this.entorno.mouseY());
-                        this.plantaParaPlantar = null; // Aseguramos que la otra mano esté vacía
+                        this.plantaParaPlantar = null; 
                         return true;
                     }
                 }
@@ -709,35 +734,33 @@ public class Juego extends InterfaceJuego {
      */
     private void manejarEstadoSosteniendoPlanta() {
         // La planta "fantasma" sigue al mouse
-        // MEJORA: Usar el método 'snapAPosicion' de la planta
         this.plantaParaPlantar.snapAPosicion(this.entorno.mouseX(), this.entorno.mouseY());
-        this.plantaParaPlantar.dibujarse(this.entorno, false); // 'false' para no dibujarle borde
+        this.plantaParaPlantar.dibujarse(this.entorno, false); 
         
         if (this.entorno.sePresionoBoton(entorno.BOTON_IZQUIERDO)) {
-            // Recorremos el tablero buscando qué casilla fue clickeada
+            // Buscamos casilla clickeada
             for (int i = 0; i < this.tablero.length; i++) {
                 Casilla celdaClickeada = this.tablero[i];
                 
                 if (celdaClickeada.fueClickeada(this.entorno.mouseX(), this.entorno.mouseY())) {
                     
-                    // 1. ¿Es plantable? Y 2. ¿No está ocupada?
                     if (celdaClickeada.esPlantable() && !estaCasillaOcupada(celdaClickeada.getCentroX(), celdaClickeada.getCentroY())) {
                         
-                        // ¡Casilla válida! Buscamos espacio en el array 'rosas'
+                        // Buscamos espacio en el array de ROSAS
                         for (int k = 0; k < this.rosas.length; k++) {
                             if (this.rosas[k] == null) {
                                 this.rosas[k] = this.plantaParaPlantar;
-                                
-                                // "Pega" la planta a la casilla y resetea su 'target'
                                 this.rosas[k].snapAPosicion(celdaClickeada.getCentroX(), celdaClickeada.getCentroY());
                                 
-                                this.plantaParaPlantar = null; // Suelta la planta
-                                this.proximoTickParaPlantar = this.entorno.numeroDeTick() + COOLDOWN_DURACION;
+                                this.plantaParaPlantar = null; // Soltamos
+                                
+                                // --- CAMBIO: Solo activamos el cooldown de la ROSA ---
+                                this.proximoTickRosa = this.entorno.numeroDeTick() + COOLDOWN_ROSA;
                                 break; 
                             }
                         }
                     }
-                    break; // Deja de buscar casillas
+                    break; 
                 }
             }
         }
